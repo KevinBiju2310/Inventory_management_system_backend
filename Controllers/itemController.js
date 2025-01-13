@@ -16,7 +16,7 @@ const addItem = async (req, res) => {
       price,
     });
     await newItem.save();
-    res.status(201).json({ message: "Item created successfully" });
+    res.status(201).json({ message: "Item created successfully", newItem });
   } catch (error) {
     res.status(500).json({ message: "Internet Server Error" });
   }

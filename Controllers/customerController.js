@@ -15,7 +15,9 @@ const addCustomer = async (req, res) => {
       mobileNumber,
     });
     await newCustomer.save();
-    res.status(201).json({ message: "Customer added successfully" });
+    res
+      .status(201)
+      .json({ message: "Customer added successfully", newCustomer });
   } catch (error) {
     res.status(500).json({ message: "Internet Server Error" });
   }
