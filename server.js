@@ -14,7 +14,7 @@ const app = express();
 app.use(cookieParser());
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: "https://inventory-management-system-frontend-vb56.onrender.com",
     credentials: true,
   })
 );
