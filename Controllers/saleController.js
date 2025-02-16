@@ -12,56 +12,45 @@ const parseDateRange = (startDate, endDate) => {
 const makeOrder = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { customer, items, paymentType } = req.body;
-    if (!items || items.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "Sale must include at least one item." });
+    const { customerId, items, totalAmount } = req.body;
+    const customer = await customerModel.findById(customerId);
+    if (!customer) {
+      return res.status(404).json({ message: "Customer Not Found" });
     }
-    if (paymentType !== "cash") {
-      return res
-        .status(400)
-        .json({ message: "Invalid payment type. Only 'cash' is allowed." });
+    const itemIds = items.map((item) => item.itemId);
+    const validItems = await itemModel.find({ _id: { $in: itemIds } });
+    if (validItems.length !== items.length) {
+      return res.status(400).json({ message: "One or more items are invalid" });
     }
-    let total = 0;
-    const updatedItems = await Promise.all(
-      items.map(async (saleItem) => {
-        const item = await itemModel.findById(saleItem.item);
-        if (!item) {
-          return res
-            .status(404)
-            .json({ message: `Item with ID ${saleItem.item} not found.` });
-        }
-        if (item.quantity < saleItem.quantity) {
-          return res
-            .status(400)
-            .json({ message: `Insufficient quantity for item ${item.name}.` });
-        }
-        // Reduce item stock and save
-        item.quantity -= saleItem.quantity;
-        await item.save();
-        total += saleItem.quantity * item.price;
-        return {
-          item: saleItem.item,
-          quantity: saleItem.quantity,
-          price: item.price,
-        };
-      })
-    );
-
+    for (const orderItem of items) {
+      const item = validItems.find(
+        (i) => i._id.toString() === orderItem.itemId
+      );
+      if (!item) {
+        return res.status(404).json({ message: `Item not found` });
+      }
+      if (item.quantity < orderItem.quantity) {
+        return res
+          .status(400)
+          .json({ message: `Insufficient stock for ${item.name}` });
+      }
+    }
+    for (const orderItem of items) {
+      await itemModel.findByIdAndUpdate(orderItem.itemId, {
+        $inc: { quantity: -orderItem.quantity },
+      });
+    }
     const sale = new saleModel({
       userId,
-      customer,
-      items: updatedItems,
-      total,
-      paymentType,
+      customer: customerId,
+      items,
+      total: totalAmount,
     });
     await sale.save();
-
-    res.status(201).json({ message: "Order created successfully", sale });
+    res.status(201).json({ message: "Order placed successfully", sale });
   } catch (error) {
-    console.error("Error creating order:", error.message);
-    res.status(500).json({ message: error.message || "Internal Server Error" });
+    console.error("Error Occured", error);
+    res.status(500).json({ message: "Internet Server Error" });
   }
 };
 
@@ -71,7 +60,8 @@ const allOrders = async (req, res) => {
     const sales = await saleModel
       .find({ userId })
       .populate("customer")
-      .populate("items.item");
+      .populate("items.itemId")
+      .sort({ createdAt: -1 });
     res.status(200).json({ sales });
   } catch (error) {
     res.status(500).json({ message: "Internet Server Error" });
@@ -92,7 +82,7 @@ const fetchReport = async (req, res) => {
             date: { $gte: start, $lte: end },
           })
           .populate("customer")
-          .populate("items.item");
+          .populate("items.itemId");
         return res.status(200).json({ sales });
 
       case "customerLedger":
@@ -102,7 +92,7 @@ const fetchReport = async (req, res) => {
             .json({ message: "Customer name is required for ledger" });
         }
         const customer = await customerModel.findOne({ name: customerName });
-        if (!customer) {  
+        if (!customer) {
           return res.status(404).json({ message: "Customer not found" });
         }
         const customerLedger = await saleModel
@@ -110,7 +100,7 @@ const fetchReport = async (req, res) => {
             userId,
             customer: customer._id,
           })
-          .populate("items.item");
+          .populate("items.itemId");
 
         return res.status(200).json({ customerLedger });
     }
