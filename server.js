@@ -14,7 +14,7 @@ const app = express();
 app.use(cookieParser());
 app.use(
   cors({
-    origin: "https://inventory-management-system-frontend-vb56.onrender.com",
+    origin: "https://inventory-management-system-frontend-theta.vercel.app/",
     // origin: "http://localhost:5173",
     credentials: true,
   })
