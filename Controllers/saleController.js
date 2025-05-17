@@ -1,6 +1,8 @@
 const saleModel = require("../Models/saleSchema");
 const itemModel = require("../Models/itemSchema");
 const customerModel = require("../Models/customerSchema");
+const STATUS = require("../utils/statusCodes");
+const MESSAGES = require("../utils/messages");
 
 const parseDateRange = (startDate, endDate) => {
   const start = new Date(startDate);
@@ -15,7 +17,9 @@ const makeOrder = async (req, res) => {
     const { customerId, items, totalAmount } = req.body;
     const customer = await customerModel.findById(customerId);
     if (!customer) {
-      return res.status(404).json({ message: "Customer Not Found" });
+      return res
+        .status(STATUS.NOT_FOUND)
+        .json({ message: MESSAGES.CUSTOMER_NOT_FOUND });
     }
     const itemIds = items.map((item) => item.itemId);
     const validItems = await itemModel.find({ _id: { $in: itemIds } });
@@ -27,12 +31,14 @@ const makeOrder = async (req, res) => {
         (i) => i._id.toString() === orderItem.itemId
       );
       if (!item) {
-        return res.status(404).json({ message: `Item not found` });
+        return res
+          .status(STATUS.NOT_FOUND)
+          .json({ message: MESSAGES.ITEM_NOT_FOUND });
       }
       if (item.quantity < orderItem.quantity) {
         return res
-          .status(400)
-          .json({ message: `Insufficient stock for ${item.name}` });
+          .status(STATUS.BAD_REQUEST)
+          .json({ message: MESSAGES.INSUFFICIENT_STOCK(item.name) });
       }
     }
     for (const orderItem of items) {
@@ -47,10 +53,12 @@ const makeOrder = async (req, res) => {
       total: totalAmount,
     });
     await sale.save();
-    res.status(201).json({ message: "Order placed successfully", sale });
+    res.status(STATUS.CREATED).json({ message: MESSAGES.ORDER_SUCCESS, sale });
   } catch (error) {
     console.error("Error Occured", error);
-    res.status(500).json({ message: "Internet Server Error" });
+    res
+      .status(STATUS.INTERNAL_SERVER_ERROR)
+      .json({ message: MESSAGES.INTERNAL_SERVER_ERROR });
   }
 };
 
@@ -62,9 +70,11 @@ const allOrders = async (req, res) => {
       .populate("customer")
       .populate("items.itemId")
       .sort({ createdAt: -1 });
-    res.status(200).json({ sales });
+    res.status(STATUS.OK).json({ sales });
   } catch (error) {
-    res.status(500).json({ message: "Internet Server Error" });
+    res
+      .status(STATUS.INTERNAL_SERVER_ERROR)
+      .json({ message: MESSAGES.INTERNAL_SERVER_ERROR });
   }
 };
 
@@ -83,17 +93,19 @@ const fetchReport = async (req, res) => {
           })
           .populate("customer")
           .populate("items.itemId");
-        return res.status(200).json({ sales });
+        return res.status(STATUS.OK).json({ sales });
 
       case "customerLedger":
         if (!customerName) {
           return res
-            .status(400)
-            .json({ message: "Customer name is required for ledger" });
+            .status(STATUS.BAD_REQUEST)
+            .json({ message: MESSAGES.CUSTOMER_NAME_REQUIRED });
         }
         const customer = await customerModel.findOne({ name: customerName });
         if (!customer) {
-          return res.status(404).json({ message: "Customer not found" });
+          return res
+            .status(STATUS.NOT_FOUND)
+            .json({ message: MESSAGES.CUSTOMER_NOT_FOUND });
         }
         const customerLedger = await saleModel
           .find({
@@ -102,10 +114,12 @@ const fetchReport = async (req, res) => {
           })
           .populate("items.itemId");
 
-        return res.status(200).json({ customerLedger });
+        return res.status(STATUS.OK).json({ customerLedger });
     }
   } catch (error) {
-    res.status(500).json({ message: "Internet Server Error" });
+    res
+      .status(STATUS.INTERNAL_SERVER_ERROR)
+      .json({ message: MESSAGES.INTERNAL_SERVER_ERROR });
   }
 };
 

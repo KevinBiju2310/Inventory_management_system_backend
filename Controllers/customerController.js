@@ -1,4 +1,6 @@
 const customerModel = require("../Models/customerSchema");
+const STATUS = require("../utils/statusCodes");
+const MESSAGES = require("../utils/messages");
 
 const addCustomer = async (req, res) => {
   try {
@@ -6,7 +8,9 @@ const addCustomer = async (req, res) => {
     const userId = req.user.id;
     const existingName = await customerModel.findOne({ name });
     if (existingName) {
-      return res.status(400).json({ message: "Customer already exists" });
+      return res
+        .status(STATUS.BAD_REQUEST)
+        .json({ message: MESSAGES.CUSTOMER_EXISTS });
     }
     const newCustomer = new customerModel({
       userId,
@@ -16,10 +20,12 @@ const addCustomer = async (req, res) => {
     });
     await newCustomer.save();
     res
-      .status(201)
-      .json({ message: "Customer added successfully", newCustomer });
+      .status(STATUS.OK)
+      .json({ message: MESSAGES.CUSTOMER_ADDED, newCustomer });
   } catch (error) {
-    res.status(500).json({ message: "Internet Server Error" });
+    res
+      .status(STATUS.INTERNAL_SERVER_ERROR)
+      .json({ message: MESSAGES.INTERNAL_SERVER_ERROR });
   }
 };
 
@@ -28,10 +34,12 @@ const allCustomers = async (req, res) => {
     const userId = req.user.id;
     const customers = await customerModel.find({ userId });
     res
-      .status(200)
-      .json({ message: "Customers retrieved successfully", customers });
+      .status(STATUS.OK)
+      .json({ message: MESSAGES.CUSTOMERS_RETRIEVED, customers });
   } catch (error) {
-    res.status(500).json({ message: "Internet Server Error" });
+    res
+      .status(STATUS.INTERNAL_SERVER_ERROR)
+      .json({ message: MESSAGES.INTERNAL_SERVER_ERROR });
   }
 };
 

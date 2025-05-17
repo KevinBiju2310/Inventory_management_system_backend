@@ -1,4 +1,6 @@
 const itemModel = require("../Models/itemSchema");
+const STATUS = require("../utils/statusCodes");
+const MESSAGES = require("../utils/messages");
 
 const addItem = async (req, res) => {
   try {
@@ -6,7 +8,9 @@ const addItem = async (req, res) => {
     const userId = req.user.id;
     const existingName = await itemModel.findOne({ name });
     if (existingName) {
-      return res.status(400).json({ message: "Item already exists" });
+      return res
+        .status(STATUS.BAD_REQUEST)
+        .json({ message: MESSAGES.ITEM_EXISTS });
     }
     const newItem = new itemModel({
       userId,
@@ -16,9 +20,13 @@ const addItem = async (req, res) => {
       price,
     });
     await newItem.save();
-    res.status(201).json({ message: "Item created successfully", newItem });
+    res
+      .status(STATUS.CREATED)
+      .json({ message: MESSAGES.ITEM_CREATED, newItem });
   } catch (error) {
-    res.status(500).json({ message: "Internet Server Error" });
+    res
+      .status(STATUS.INTERNAL_SERVER_ERROR)
+      .json({ message: MESSAGES.INTERNAL_SERVER_ERROR });
   }
 };
 
@@ -29,16 +37,20 @@ const updateItem = async (req, res) => {
     const userId = req.user.id;
     const item = await itemModel.findOne({ _id: id, userId });
     if (!item) {
-      return res.status(404).json({ message: "Item not found" });
+      return res
+        .status(STATUS.NOT_FOUND)
+        .json({ message: MESSAGES.ITEM_UPDATED });
     }
     item.name = name;
     item.description = description;
     item.quantity = quantity;
     item.price = price;
     await item.save();
-    res.status(200).json({ message: "Item updated successfully" });
+    res.status(STATUS.OK).json({ message: MESSAGES.ITEM_UPDATED });
   } catch (error) {
-    res.status(500).json({ message: "Internal Server Error" });
+    res
+      .status(STATUS.INTERNAL_SERVER_ERROR)
+      .json({ message: MESSAGES.INTERNAL_SERVER_ERROR });
   }
 };
 
@@ -46,7 +58,7 @@ const allItems = async (req, res) => {
   try {
     const userId = req.user.id;
     const items = await itemModel.find({ userId });
-    res.status(200).json({ message: "Items retrieved successfully", items });
+    res.status(STATUS.OK).json({ message: MESSAGES.ITEMS_RETRIEVED, items });
   } catch (error) {
     res.status(500).json({ message: "Internal Server Error" });
   }
@@ -58,12 +70,16 @@ const deleteItem = async (req, res) => {
     const userId = req.user.id;
     const item = await itemModel.findOne({ _id: id, userId });
     if (!item) {
-      return res.status(404).json({ message: "Item not found" });
+      return res
+        .status(STATUS.NOT_FOUND)
+        .json({ message: MESSAGES.ITEM_NOT_FOUND });
     }
     await itemModel.deleteOne({ _id: id });
-    res.status(200).json({ message: "Item deleted successfully" });
+    res.status(STATUS.OK).json({ message: MESSAGES.ITEM_DELETED });
   } catch (error) {
-    res.status(500).json({ message: "Internal Server Error" });
+    res
+      .status(STATUS.INTERNAL_SERVER_ERROR)
+      .json({ message: MESSAGES.INTERNAL_SERVER_ERROR });
   }
 };
 

@@ -4,13 +4,17 @@ const {
   generateRefreshToken,
 } = require("../utils/tokens");
 const userModel = require("../Models/userSchema");
+const STATUS = require("../utils/statusCodes");
+const MESSAGES = require("../utils/messages");
 
 const signUp = async (req, res) => {
   const { email, password } = req.body;
   try {
     const existingEmail = await userModel.findOne({ email });
     if (existingEmail) {
-      return res.status(400).json({ message: "Email already exits" });
+      return res
+        .status(STATUS.BAD_REQUEST)
+        .json({ message: MESSAGES.EMAIL_EXISTS });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new userModel({
@@ -19,11 +23,15 @@ const signUp = async (req, res) => {
     });
     const saveUser = await newUser.save();
     if (!saveUser) {
-      return res.status(500).json({ message: "Error creating user" });
+      return res
+        .status(STATUS.BAD_REQUEST)
+        .json({ message: MESSAGES.ERROR_CREATING_USER });
     }
-    res.status(201).json({ message: "User created Successfully" });
+    res.status(STATUS.OK).json({ message: MESSAGES.USER_CREATED });
   } catch (error) {
-    res.status(500).json({ message: "Internet server error" });
+    res
+      .status(STATUS.INTERNAL_SERVER_ERROR)
+      .json({ message: MESSAGES.INTERNAL_SERVER_ERROR });
   }
 };
 
@@ -32,11 +40,15 @@ const signIn = async (req, res) => {
   try {
     const user = await userModel.findOne({ email });
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res
+        .status(STATUS.NOT_FOUND)
+        .json({ message: MESSAGES.USER_NOT_FOUND });
     }
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
-      return res.status(401).json({ message: "Password is incorrect" });
+      return res
+        .status(STATUS.UNAUTHORIZED)
+        .json({ message: MESSAGES.PASSWORD_INCORRECT });
     }
     const accessToken = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
@@ -52,9 +64,11 @@ const signIn = async (req, res) => {
       sameSite: "None",
       maxAge: 15 * 60 * 1000,
     });
-    res.status(200).json({ message: "Login successfull", user });
+    res.status(STATUS.OK).json({ message: MESSAGES.LOGIN_SUCCESS, user });
   } catch (error) {
-    res.status(500).json({ message: "Internet server error" });
+    res
+      .status(STATUS.INTERNAL_SERVER_ERROR)
+      .json({ message: MESSAGES.INTERNAL_SERVER_ERROR });
   }
 };
 
@@ -70,7 +84,7 @@ const logOut = (req, res) => {
     secure: process.env.NODE_ENV === "production",
     sameSite: "None",
   });
-  res.status(200).json({ message: "Logged out successfully" });
+  res.status(STATUS.OK).json({ message: MESSAGES.LOGOUT_SUCCESS });
 };
 
 module.exports = {
